@@ -9,6 +9,7 @@ use crate::{
 pub type HandleCallback = fn(&HeaderData, &mut ResponseTool, &mut RouterManager) -> (); // request: HeaderData, response: TcpStream
 pub type HandlerType = HashMap<HandlerHashmapKeyString, Vec<HandleCallback>>;
 #[derive(Clone)]
+#[doc = include_str!("./HttpHandler.md")]
 pub struct HttpHandler {
     handler: HandlerType,
     not_found_handler: HandleCallback,
@@ -39,40 +40,53 @@ impl HttpHandler {
         self
     }
 
+    #[doc = "to register the post handler ex : handle.post('/'.to_string() , <your handler>)"]
     pub fn post(&mut self, path: String, handler: HandleCallback) {
         let key = get_key("POST".to_string(), path);
         self.add_handle(key, handler);
     }
 
+    #[doc = "to register the get handler ex : handle.get('/'.to_string() , <your handler>)"]
     pub fn get(&mut self, path: String, handler: HandleCallback) {
         let key = get_key("GET".to_string(), path);
         self.add_handle(key, handler);
     }
 
+    #[doc = "to register the put handler ex : handle.put('/'.to_string() , <your handler>)"]
     pub fn put(&mut self, path: String, handler: HandleCallback) {
         let key = get_key("PUT".to_owned(), path);
         self.add_handle(key, handler);
     }
 
+    #[doc = "to register the patch handler ex : handle.patch('/'.to_string() , <your handler>)"]
     pub fn patch(&mut self, path: String, handler: HandleCallback) {
         let key = get_key("PATCH".to_string(), path);
         self.add_handle(key, handler);
     }
+
+    #[doc = "to register the delete handler ex : handle.delete('/'.to_string() , <your handler>)"]
     pub fn delete(&mut self, path: String, handler: HandleCallback) {
         let key = get_key("DELETE".to_string(), path);
         self.add_handle(key, handler);
     }
+
+    #[doc = "to register the handler for all method like:GET,POST ex : handle.all_method('/'.to_string() , <your handler>)"]
     pub fn all_method(&mut self, path: String, handler: HandleCallback) {
         let key = get_key("*".to_string(), path);
         self.add_handle(key, handler);
     }
+
+    #[doc = "to register the handler for not found case ex : handle.not_found(<your handler>)"]
     pub fn not_found(&mut self, handler: HandleCallback) {
         self.not_found_handler = handler;
     }
+
+    #[doc = "to register the handler for all http request ex : handle.all(<your handler>)"]
     pub fn all(&mut self, handler: HandleCallback) {
         let key = get_key("*".to_string(), "*".to_string());
         self.add_handle(key, handler);
     }
+
     pub fn handle_http_request(&mut self, listener: TcpListener) {
         for stream in listener.incoming() {
             let mut stream = stream.unwrap();
@@ -98,9 +112,11 @@ impl HttpHandler {
         }
     }
 
+    #[doc(hidden)]
     pub fn handlers(&self) -> &HandlerType {
         &self.handler
     }
+    
     pub fn route(&mut self, path: String, route: &Self) {
         self.add_route(path, route)
     }
