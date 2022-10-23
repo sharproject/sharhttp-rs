@@ -2,14 +2,14 @@
 use std::{collections::HashMap, net::TcpListener};
 
 use crate::{
-    routeManager::RouterManager, util::append_vec::append_vec, HandleConnection::RequestProcessing,
+    RouteManager::RouterManager, util::append_vec::append_vec, HandleConnection::RequestProcessing,
     Request::get_http_data::HeaderData, Response::ResponseTool,
 };
 
 pub type HandleCallback = fn(&HeaderData, &mut ResponseTool, &mut RouterManager) -> (); // request: HeaderData, response: TcpStream
 pub type HandlerType = HashMap<HandlerHashmapKeyString, Vec<HandleCallback>>;
 #[derive(Clone)]
-#[doc = include_str!("./HttpHandler.md")]
+#[doc = include_str!("../../doc/HttpHandler.md")]
 pub struct HttpHandler {
     handler: HandlerType,
     not_found_handler: HandleCallback,

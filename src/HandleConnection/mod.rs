@@ -6,7 +6,7 @@ use std::{
 };
 
 use crate::{
-    routeManager::RouterManager,
+    RouteManager::RouterManager,
     util::append_vec::append_vec,
     App::{get_key, HandlerType},
     Request::get_http_data::{GetRequest, HeaderData},
