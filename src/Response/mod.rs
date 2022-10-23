@@ -11,7 +11,7 @@ pub struct ResponseTool<'a> {
     pub(crate) status: i128,
     pub content: String,
     pub header: &'a mut crate::Request::get_http_data::HeaderType,
-    pub Request: crate::Request::get_http_data::HeaderData,
+    pub Request: &'a crate::Request::get_http_data::HeaderData,
     pub cookie: &'a mut crate::Request::get_http_data::CookieType,
 }
 
@@ -24,6 +24,7 @@ impl ResponseTool<'_> {
         if self.response {
             panic!("was response");
         }
+        self.preProcessing();
         let mut status_line = "".to_owned();
         status_line.push_str("HTTP/1.1 ");
         status_line.push_str(&self.status.to_string());
@@ -82,5 +83,15 @@ impl ResponseTool<'_> {
             }
         }
         self.cookie.clone_from(&newVec);
+    }
+}
+
+trait Process {
+    fn preProcessing(&mut self);
+}
+
+impl Process for ResponseTool<'_> {
+    fn preProcessing(&mut self) {
+        todo!()
     }
 }

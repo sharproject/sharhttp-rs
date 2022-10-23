@@ -1,7 +1,7 @@
 use regex::Regex;
 use std::fmt::Debug;
 
-pub type HeaderType = std::collections::HashMap<String, String>;
+pub type HeaderType = std::collections::BTreeMap<String, String>;
 pub type CookieType = Vec<CookieValue>;
 
 #[derive(Clone)]
@@ -22,6 +22,10 @@ pub struct HeaderData {
     pub path: String,
     pub http_version: String,
     pub header: HeaderType,
+
+    pub LocalData: serde_json::Map<String, serde_json::Value>,
+
+    pub LocalLibParseData: serde_json::Map<String, serde_json::Value>,
 }
 impl HeaderData {
     pub fn Default() -> Self {
@@ -29,7 +33,9 @@ impl HeaderData {
             method: "".to_string(),
             path: "".to_owned(),
             http_version: "".to_string(),
-            header: std::collections::HashMap::new(),
+            header: std::collections::BTreeMap::new(),
+            LocalData: serde_json::Map::new(),
+            LocalLibParseData: serde_json::Map::new(),
         }
     }
 }
@@ -48,12 +54,7 @@ pub fn GetRequest(http_request: &Vec<String>) -> HeaderData {
     let http_request_path_method_regex =
         Regex::new(r"(POST|GET|PUT|PATCH|DELETE)(.+)(HTTP(/)\d.\d)").unwrap();
     let http_request_header_regex = Regex::new(r"(.+)\s?:\s(.+)").unwrap();
-    let mut data: HeaderData = HeaderData {
-        method: String::from(""),
-        path: String::from(""),
-        http_version: String::from(""),
-        header: std::collections::HashMap::new(),
-    };
+    let mut data: HeaderData = HeaderData::Default();
     for e in http_request {
         if http_request_path_method_regex.is_match(&e) {
             for cap in http_request_path_method_regex.captures_iter(&e) {

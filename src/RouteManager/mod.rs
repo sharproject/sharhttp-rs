@@ -1,5 +1,5 @@
 use crate::App::{
-    add_route_pub, pub_add_multiple_handler, HandleCallback, HandlerHashmapKeyString, HandlerType,
+    add_route_pub, pub_add_multiple_handler, HandleCallback, HandlerBTreeMapKeyString, HandlerType,
 };
 
 #[derive(Clone)]
@@ -22,19 +22,23 @@ impl RouterManager {
     }
     pub fn add_global_handle(
         &mut self,
-        key: HandlerHashmapKeyString,
+        key: HandlerBTreeMapKeyString,
         handler: Vec<HandleCallback>,
     ) {
         self.RouterChange = true;
         pub_add_multiple_handler(&mut self.AddGlobalHandler, key, handler)
     }
-    pub fn add_local_handle(&mut self, key: HandlerHashmapKeyString, handler: Vec<HandleCallback>) {
+    pub fn add_local_handle(
+        &mut self,
+        key: HandlerBTreeMapKeyString,
+        handler: Vec<HandleCallback>,
+    ) {
         self.RouterChange = true;
         pub_add_multiple_handler(&mut self.AddLocalHandler, key, handler)
     }
 
     pub fn setLocalPath(&mut self, path: String) {
-        self.LocalPath = path
+        self.LocalPath = path.to_string()
     }
     pub fn ProcessingRouter(&self, handler: &mut HandlerType) {
         add_route_pub(handler, "/".to_string(), &self.AddGlobalHandler);

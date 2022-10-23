@@ -1,16 +1,16 @@
 #![allow(dead_code)]
 use std::{
-    collections::HashMap,
+    collections::BTreeMap,
     io::{BufRead, BufReader},
     net::TcpStream,
 };
 
 use crate::{
-    RouteManager::RouterManager,
     util::append_vec::append_vec,
     App::{get_key, HandlerType},
     Request::get_http_data::{GetRequest, HeaderData},
     Response::ResponseTool,
+    RouteManager::RouterManager,
 };
 
 use crate::App::HandleCallback;
@@ -50,8 +50,8 @@ impl HandleConnection for RequestProcessing {
             response: false,
             status: 200,
             content: "".to_string(),
-            header: &mut HashMap::new(),
-            Request: self.httpData.clone(),
+            header: &mut BTreeMap::new(),
+            Request: &self.httpData.clone(),
             cookie: &mut Vec::new(),
         };
         let mut routerM = RouterManager::new();
@@ -60,7 +60,7 @@ impl HandleConnection for RequestProcessing {
         response.Setup();
 
         if self.ProcessingHandler.len() <= 0 {
-            (self.not_found_handler)(&self.httpData, &mut response, &mut routerM);
+            (self.not_found_handler)(&mut self.httpData, &mut response, &mut routerM);
             return routerM;
         };
 
@@ -68,12 +68,12 @@ impl HandleConnection for RequestProcessing {
             if response.response {
                 return routerM;
             }
-            (&h)(&self.httpData, &mut response, &mut routerM);
+            (&h)(&mut self.httpData, &mut response, &mut routerM);
         }
         if response.response {
             return routerM;
         }
-        (self.not_found_handler)(&self.httpData, &mut response, &mut routerM);
+        (self.not_found_handler)(&mut self.httpData, &mut response, &mut routerM);
         return routerM;
     }
 

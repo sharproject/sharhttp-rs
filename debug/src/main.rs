@@ -1,7 +1,7 @@
-use rust_http_web_lib::RouteManager::RouterManager;
 use rust_http_web_lib::App::HttpHandler;
 use rust_http_web_lib::Request::get_http_data::HeaderData;
 use rust_http_web_lib::Response::ResponseTool;
+use rust_http_web_lib::RouteManager::RouterManager;
 
 use std::net::TcpListener;
 
@@ -30,9 +30,20 @@ fn main() {
         }
     }
 }
-fn home_handler(_request: &HeaderData, response: &mut ResponseTool, _: &mut RouterManager) {
-    response.send("<h1>hello world</h1>".to_string(), true);
+fn home_handler(request: &mut HeaderData, response: &mut ResponseTool, _: &mut RouterManager) {
+    response.send(
+        format!(
+            r"<h1>hello world</h1> <br\> <h1>local data : {}</h1>",
+            request.LocalData.get("abc").unwrap().as_str().unwrap()
+        )
+        .to_string(),
+        true,
+    );
 }
-fn log_request(request: &HeaderData, _response: &mut ResponseTool, _: &mut RouterManager) {
+fn log_request(request: &mut HeaderData, _response: &mut ResponseTool, _: &mut RouterManager) {
+    request.LocalData.insert(
+        "abc".to_string(),
+        serde_json::Value::String("hello mấy bro".to_string()),
+    );
     println!("method: {}, path: {}", request.method, request.path);
 }
