@@ -101,9 +101,6 @@ impl HttpHandler {
                     .processing(&mut stream)
                     .ProcessingRouter(&mut self.handler);
             }
-            // stream
-            //     .shutdown(std::net::Shutdown::Both)
-            //     .expect("shutdown call failed");
         }
     }
 

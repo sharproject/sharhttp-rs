@@ -1,14 +1,17 @@
 use std::{io::Write, net::TcpStream};
 
-use crate::Request::{
-    get_default_header::default_header,
-    get_http_data::{CookieType, CookieValue},
+use crate::{
+    status::canonical_reason,
+    Request::{
+        get_default_header::default_header,
+        get_http_data::{CookieType, CookieValue},
+    },
 };
 
 pub struct ResponseTool<'a> {
     pub(crate) stream: &'a mut TcpStream,
     pub response: bool,
-    pub(crate) status: i128,
+    pub(crate) status: u128,
     pub content: String,
     pub header: &'a mut crate::Request::get_http_data::HeaderType,
     pub Request: &'a crate::Request::get_http_data::HeaderData,
@@ -16,7 +19,7 @@ pub struct ResponseTool<'a> {
 }
 
 impl ResponseTool<'_> {
-    pub fn status(&mut self, status: i128) -> &mut Self {
+    pub fn status(&mut self, status: u128) -> &mut Self {
         self.status = status;
         return self;
     }
@@ -25,9 +28,12 @@ impl ResponseTool<'_> {
             panic!("was response");
         }
         self.preProcessing();
-        let mut status_line = "".to_owned();
-        status_line.push_str("HTTP/1.1 ");
-        status_line.push_str(&self.status.to_string());
+        let status_line = format!(
+            "HTTP/1.1 {} {}",
+            self.status,
+            canonical_reason(self.status.try_into().unwrap()).unwrap()
+        );
+
         let length = self.content.len();
 
         let mut response_data = format!("{status_line}\r\nContent-Length: {length}\r\n");
@@ -39,7 +45,6 @@ impl ResponseTool<'_> {
         }
         response_data.push_str("\r\n");
         response_data.push_str(&self.content);
-
 
         match self.stream.write_all(response_data.as_bytes()) {
             Ok(_) => {
@@ -91,6 +96,5 @@ trait Process {
 }
 
 impl Process for ResponseTool<'_> {
-    fn preProcessing(&mut self) {
-    }
+    fn preProcessing(&mut self) {}
 }
