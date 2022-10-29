@@ -8,8 +8,9 @@ use crate::{
 
 pub type HandleCallback = fn(&mut HeaderData, &mut ResponseTool, &mut RouterManager) -> (); // request: HeaderData, response: TcpStream
 
-pub type HandlerType = BTreeMap<HandlerBTreeMapKeyString, Vec<HandleInfo>>;
+pub type HandlerType = BTreeMap<HandlerBTreeMapKeyString, Vec<HandleCallback>>;
 #[doc = include_str!("../../doc/HttpHandler.md")]
+#[derive(Clone)]
 pub struct HttpHandler {
     handler: HandlerType,
     not_found_handler: HandleCallback,
@@ -131,11 +132,7 @@ impl Handle for HttpHandler {
         key: HandlerBTreeMapKeyString,
         handler: Vec<HandleCallback>,
     ) {
-        pub_add_multiple_handler(
-            &mut self.handler,
-            key.clone(),
-            HandleInfo::getInfoFromFn(handler, key.clone()),
-        );
+        pub_add_multiple_handler(&mut self.handler, key.clone(), handler);
     }
     fn register_handler(&mut self, method: String, path: String, handler: HandleCallback) {
         let key = get_key(method, path);
@@ -146,7 +143,7 @@ impl Handle for HttpHandler {
 pub fn pub_add_multiple_handler(
     handlers: &mut HandlerType,
     key: HandlerBTreeMapKeyString,
-    handler: Vec<HandleInfo>,
+    handler: Vec<HandleCallback>,
 ) {
     let handle = handlers.get_mut(&key);
     match handle {
@@ -164,7 +161,7 @@ pub fn get_key(method: String, path: String) -> HandlerBTreeMapKeyString {
         path,
     };
 }
-#[derive(Clone, Ord, PartialOrd, PartialEq, Eq,Debug)]
+#[derive(Clone, Ord, PartialOrd, PartialEq, Eq, Debug)]
 pub struct HandlerBTreeMapKeyString {
     pub data: String,
     pub method: String,
@@ -194,25 +191,5 @@ pub fn add_route_pub(hander: &mut HandlerType, path: String, route: &HandlerType
         );
         let key = get_key(n.method.clone(), new_path);
         pub_add_multiple_handler(hander, key, route.get(n).unwrap().to_vec());
-    }
-}
-#[derive(Clone)]
-pub struct HandleInfo {
-    path: HandlerBTreeMapKeyString,
-    pub func: HandleCallback,
-}
-
-impl HandleInfo {
-    pub fn getInfoFromFn(
-        handlers: Vec<HandleCallback>,
-        path: HandlerBTreeMapKeyString,
-    ) -> Vec<Self> {
-        handlers
-            .into_iter()
-            .map(move |fu| HandleInfo {
-                func: fu,
-                path: path.clone(),
-            })
-            .collect()
     }
 }

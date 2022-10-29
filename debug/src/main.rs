@@ -8,6 +8,7 @@ use std::net::TcpListener;
 fn main() {
     let mut handle = HttpHandler::new();
     const PORT: i32 = 8000;
+    handle.turn_threading();
 
     handle.get("/".to_owned(), home_handler);
     handle.all(log_request);
@@ -30,20 +31,9 @@ fn main() {
         }
     }
 }
-fn home_handler(request: &mut HeaderData, response: &mut ResponseTool, _: &mut RouterManager) {
-    response.send(
-        format!(
-            r"<h1>hello world</h1> <br\> <h1>local data : {}</h1>",
-            request.LocalData.get("abc").unwrap().as_str().unwrap()
-        )
-        .to_string(),
-        true,
-    );
+fn home_handler(_: &mut HeaderData, response: &mut ResponseTool, _: &mut RouterManager) {
+    response.send(format!(r"<h1>hello world</h1> <br\>").to_string(), true);
 }
 fn log_request(request: &mut HeaderData, _response: &mut ResponseTool, _: &mut RouterManager) {
-    request.LocalData.insert(
-        "abc".to_string(),
-        serde_json::Value::String("hello mấy bro".to_string()),
-    );
     println!("method: {}, path: {}", request.method, request.path);
 }

@@ -7,7 +7,7 @@ use std::{
 
 use crate::{
     util::append_vec::append_vec,
-    App::{get_key, HandleInfo, HandlerType},
+    App::{get_key,  HandlerType},
     Request::get_http_data::{GetRequest, HeaderData},
     Response::ResponseTool,
     RouteManager::RouterManager,
@@ -16,7 +16,7 @@ use crate::{
 use crate::App::HandleCallback;
 
 pub struct RequestProcessing {
-    ProcessingHandler: Vec<HandleInfo>,
+    ProcessingHandler: Vec<HandleCallback>,
     not_found_handler: HandleCallback,
     httpData: HeaderData,
 }
@@ -56,7 +56,6 @@ impl HandleConnection for RequestProcessing {
         };
         let mut routerM = RouterManager::new();
 
-        routerM.setLocalPath(self.httpData.path.clone());
         response.Setup();
 
         if self.ProcessingHandler.len() <= 0 {
@@ -68,7 +67,7 @@ impl HandleConnection for RequestProcessing {
             if response.response {
                 return routerM;
             }
-            (&h.func)(&mut self.httpData, &mut response, &mut routerM);
+            (&h)(&mut self.httpData, &mut response, &mut routerM);
         }
         if response.response {
             return routerM;
