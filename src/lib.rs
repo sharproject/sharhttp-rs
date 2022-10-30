@@ -7,3 +7,4 @@ pub mod util;
 pub mod HandleConnection;
 pub mod RouteManager;
 pub mod status;
+pub use lib_macro::handler;

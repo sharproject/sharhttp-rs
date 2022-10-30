@@ -1,3 +1,4 @@
+use rust_http_web_lib::handler;
 use rust_http_web_lib::App::HttpHandler;
 use rust_http_web_lib::Request::get_http_data::HeaderData;
 use rust_http_web_lib::Response::ResponseTool;
@@ -36,4 +37,9 @@ fn home_handler(_: &mut HeaderData, response: &mut ResponseTool, _: &mut RouterM
 }
 fn log_request(request: &mut HeaderData, _response: &mut ResponseTool, _: &mut RouterManager) {
     println!("method: {}, path: {}", request.method, request.path);
+}
+
+#[handler]
+fn hello(a:i32,b:i32) -> i32 {
+    1 + 2
 }
