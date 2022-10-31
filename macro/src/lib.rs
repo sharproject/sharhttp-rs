@@ -3,16 +3,30 @@ use proc_macro::{Group, Ident, Literal, Punct, TokenStream, TokenTree};
 #[proc_macro_attribute]
 pub fn handler(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let body = parse_token_stream(item);
-    let function_data = body.to_parse_function().unwrap();
-    format!(
-        "fn {}{} -> {} {}",
+    let mut function_data = body.to_parse_function().unwrap();
+
+    let mut arg_list = {
+        let args = ArgsSaveType {
+            name: "&self".to_string(),
+            arg_type: None,
+            position: function_data.args.len(),
+        };
+        add_to_first(function_data.args, args)
+    };
+    function_data.args = arg_list;
+
+    let code = format!(
+        "#[derive(Debug, Default)]\nstruct {};\n
+        impl {} {{
+            pub fn call{} -> {} {}
+        }} \"               ",
+        function_data.function_name,
         function_data.function_name,
         function_data.get_args_string(),
         function_data.return_value_type,
         function_data.function_body.to_string()
-    )
-    .parse()
-    .unwrap()
+    );
+    code.parse().unwrap()
 }
 
 fn parse_token_stream(body: TokenStream) -> ParseTokenStreamData {
@@ -56,7 +70,7 @@ impl ParseTokenStreamData {
                 if a % 2 != 0 {
                     arg.push(ArgsSaveType {
                         name: data[a - 1].to_string(),
-                        arg_type: data[a].to_string(),
+                        arg_type: Some(data[a].to_string()),
                         position: arg.len(),
                     })
                 }
@@ -72,7 +86,6 @@ impl ParseTokenStreamData {
     }
 }
 
-#[allow(unused)]
 #[derive(Debug)]
 struct FunctionTool {
     pub function_name: String,
@@ -81,11 +94,11 @@ struct FunctionTool {
     pub function_body: Group,
 }
 
-#[allow(unused)]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct ArgsSaveType {
     pub name: String,
-    pub arg_type: String,
+    pub arg_type: Option<String>,
+    #[allow(dead_code)]
     pub position: usize,
 }
 
@@ -93,9 +106,28 @@ impl FunctionTool {
     pub fn get_args_string(&self) -> String {
         let mut args = "(".to_owned();
         for a in &self.args {
-            args.push_str(&format!("{}:{} ,", a.name, a.arg_type))
+            match a.name.as_str() {
+                "&self" => {
+                    args.push_str(&format!("{} ,", a.name));
+                }
+                _ => args.push_str(&format!("{}:{} ,", a.name, a.arg_type.as_ref().unwrap())),
+            };
         }
         args.push_str(")");
         args
     }
+}
+
+#[allow(unused)]
+macro_rules! parse_string_to_token_stream {
+    () => {};
+}
+
+fn add_to_first<T: Clone>(data: Vec<T>, e: T) -> Vec<T> {
+    let mut tmp_vec = Vec::new();
+    tmp_vec.push(e);
+    for e in &data {
+        tmp_vec.push(e.clone());
+    }
+    tmp_vec
 }

@@ -10,6 +10,8 @@ fn main() {
     let mut handle = HttpHandler::new();
     const PORT: i32 = 8000;
     handle.turn_threading();
+    let data = hello::default();
+    dbg!(data.call(1, 2));
 
     handle.get("/".to_owned(), home_handler);
     handle.all(log_request);
@@ -40,6 +42,6 @@ fn log_request(request: &mut HeaderData, _response: &mut ResponseTool, _: &mut R
 }
 
 #[handler]
-fn hello(a:i32,b:i32) -> i32 {
-    1 + 2
+fn hello(a: i32, b: i32) -> i32 {
+    a + b
 }
