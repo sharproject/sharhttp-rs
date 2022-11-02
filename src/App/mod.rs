@@ -84,23 +84,31 @@ impl HttpHandler {
 
     pub fn handle_http_request(&mut self, listener: TcpListener) {
         for stream in listener.incoming() {
-            let mut stream = stream.unwrap();
-            let mut process = RequestProcessing::new(self.not_found_handler);
-            process.preProcessing(&self.handler, &mut stream);
-            if self.threading {
-                let han = &mut self.handler;
-                std::thread::spawn(move || process.processing(&mut stream))
-                    .join()
-                    .and_then(|f| {
-                        f.ProcessingRouter(han);
-                        Ok(())
-                    })
-                    .expect("đen thôi đỏ là red");
-            } else {
-                process
-                    .processing(&mut stream)
-                    .ProcessingRouter(&mut self.handler);
+            use std::time::Instant;
+            let now = Instant::now();
+
+            {
+                let mut stream = stream.unwrap();
+                let mut process = RequestProcessing::new(self.not_found_handler);
+                process.preProcessing(&self.handler, &mut stream);
+                if self.threading {
+                    let han = &mut self.handler;
+                    std::thread::spawn(move || process.processing(&mut stream))
+                        .join()
+                        .and_then(|f| {
+                            f.ProcessingRouter(han);
+                            Ok(())
+                        })
+                        .expect("đen thôi đỏ là red");
+                } else {
+                    process
+                        .processing(&mut stream)
+                        .ProcessingRouter(&mut self.handler);
+                }
             }
+
+            let elapsed = now.elapsed();
+            println!("Elapsed: {:.2?}", elapsed);
         }
     }
 
