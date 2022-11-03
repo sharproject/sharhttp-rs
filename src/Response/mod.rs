@@ -2,6 +2,7 @@ use std::{io::Write, net::TcpStream};
 
 use crate::{
     status::canonical_reason,
+    App::HandleCallback,
     Request::{
         get_default_header::default_header,
         get_http_data::{CookieType, CookieValue},
@@ -16,6 +17,8 @@ pub struct ResponseTool<'a> {
     pub header: &'a mut crate::Request::get_http_data::HeaderType,
     pub Request: &'a crate::Request::get_http_data::HeaderData,
     pub cookie: &'a mut crate::Request::get_http_data::CookieType,
+    pub StartTime: std::time::Instant,
+    pub finalFunction: HandleCallback,
 }
 
 impl ResponseTool<'_> {
@@ -88,6 +91,11 @@ impl ResponseTool<'_> {
             }
         }
         self.cookie.clone_from(&newVec);
+    }
+
+    #[doc = "to register the handler for not found case \n , warn : this function will overwrite all set before \n ,ex : handle.not_found(<your handler>)"]
+    pub fn finalFn(&mut self, han: HandleCallback) {
+        self.finalFunction = han;
     }
 }
 

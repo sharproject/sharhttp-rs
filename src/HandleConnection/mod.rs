@@ -7,7 +7,7 @@ use std::{
 
 use crate::{
     util::append_vec::append_vec,
-    App::{get_key,  HandlerType},
+    App::{get_key, HandlerType},
     Request::get_http_data::{GetRequest, HeaderData},
     Response::ResponseTool,
     RouteManager::RouterManager,
@@ -19,14 +19,22 @@ pub struct RequestProcessing {
     ProcessingHandler: Vec<HandleCallback>,
     not_found_handler: HandleCallback,
     httpData: HeaderData,
+    startTime: std::time::Instant,
+    finalFunction: HandleCallback,
 }
 
 impl RequestProcessing {
-    pub fn new(not_found_handler: HandleCallback) -> RequestProcessing {
+    pub fn new(
+        not_found_handler: HandleCallback,
+        StartTime: std::time::Instant,
+        finalFunction: HandleCallback,
+    ) -> RequestProcessing {
         RequestProcessing {
             ProcessingHandler: Vec::new(),
             not_found_handler,
             httpData: HeaderData::Default(),
+            startTime: StartTime,
+            finalFunction,
         }
     }
     pub fn preProcessing(&mut self, handlers: &HandlerType, stream: &mut TcpStream) {
@@ -53,6 +61,8 @@ impl HandleConnection for RequestProcessing {
             header: &mut BTreeMap::new(),
             Request: &self.httpData.clone(),
             cookie: &mut Vec::new(),
+            StartTime: self.startTime,
+            finalFunction: self.finalFunction,
         };
         let mut routerM = RouterManager::new();
 
@@ -60,19 +70,23 @@ impl HandleConnection for RequestProcessing {
 
         if self.ProcessingHandler.len() <= 0 {
             (self.not_found_handler)(&mut self.httpData, &mut response, &mut routerM);
+            (response.finalFunction)(&mut self.httpData, &mut response, &mut routerM);
             return routerM;
         };
 
         for h in &self.ProcessingHandler {
             if response.response {
+                (response.finalFunction)(&mut self.httpData, &mut response, &mut routerM);
                 return routerM;
             }
             (&h)(&mut self.httpData, &mut response, &mut routerM);
         }
         if response.response {
+            (response.finalFunction)(&mut self.httpData, &mut response, &mut routerM);
             return routerM;
         }
         (self.not_found_handler)(&mut self.httpData, &mut response, &mut routerM);
+        (response.finalFunction)(&mut self.httpData, &mut response, &mut routerM);
         return routerM;
     }
 

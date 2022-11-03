@@ -15,6 +15,7 @@ pub struct HttpHandler {
     handler: HandlerType,
     not_found_handler: HandleCallback,
     threading: bool,
+    finalHandler: HandleCallback,
 }
 
 pub fn default_not_found_handler(
@@ -33,6 +34,7 @@ impl HttpHandler {
             handler: (BTreeMap::new()),
             not_found_handler: default_not_found_handler,
             threading: false,
+            finalHandler: |_, _, _| {},
         };
     }
 
@@ -77,6 +79,11 @@ impl HttpHandler {
         self.not_found_handler = handler;
     }
 
+    #[doc = "to register the handler for run when response case ex : handle.finalFn(<your handler>)"]
+    pub fn finalFn(&mut self, handler: HandleCallback) {
+        self.finalHandler = handler;
+    }
+
     #[doc = "to register the handler for all http request ex : handle.all(<your handler>)"]
     pub fn all(&mut self, handler: HandleCallback) {
         self.register_handler(String::from("*"), String::from("*"), handler)
@@ -84,22 +91,25 @@ impl HttpHandler {
 
     pub fn handle_http_request(&mut self, listener: TcpListener) {
         for stream in listener.incoming() {
-            use std::time::Instant;
-            let now = Instant::now();
-
+            let now = std::time::Instant::now();
             {
                 let mut stream = stream.unwrap();
-                let mut process = RequestProcessing::new(self.not_found_handler);
+                let mut process =
+                    RequestProcessing::new(self.not_found_handler, now, self.finalHandler);
                 process.preProcessing(&self.handler, &mut stream);
+
                 if self.threading {
-                    let han = &mut self.handler;
-                    std::thread::spawn(move || process.processing(&mut stream))
-                        .join()
-                        .and_then(|f| {
-                            f.ProcessingRouter(han);
-                            Ok(())
-                        })
-                        .expect("đen thôi đỏ là red");
+                    let (sender, receiver) = std::sync::mpsc::channel::<RouterManager>();
+
+                    std::thread::spawn(move || sender.send(process.processing(&mut stream)));
+                    // threadHan
+                    //     .join()
+                    //     .and_then(|f| {
+                    //         f.ProcessingRouter(han);
+                    //         Ok(())
+                    //     })
+                    //     .expect("đen thôi đỏ là red");
+                    receiver.recv().unwrap().ProcessingRouter(&mut self.handler);
                 } else {
                     process
                         .processing(&mut stream)
