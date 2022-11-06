@@ -5,8 +5,6 @@ use rust_http_web_lib::RouteManager::RouterManager;
 
 use std::net::TcpListener;
 
-
-
 fn main() {
     let mut handle = HttpHandler::new();
     const PORT: i32 = 8000;
@@ -35,6 +33,7 @@ fn main() {
     }
 }
 fn home_handler(_: &mut HeaderData, response: &mut ResponseTool, _: &mut RouterManager) {
+    response.caching = true;
     response.send(format!(r"<h1>hello world</h1> <br\>").to_string(), true);
 }
 fn log_request(request: &mut HeaderData, _response: &mut ResponseTool, _: &mut RouterManager) {

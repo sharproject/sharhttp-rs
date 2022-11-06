@@ -63,11 +63,11 @@ impl RequestProcessing {
         cache: &RequestCaching,
     ) {
         self.get_request_data(stream);
-        self.get_handler(handlers);
-        self.cacheData = match cache.get(&self.httpData.path.clone()){
+        self.cacheData = match cache.get(&self.httpData.path.clone()) {
             Some(a) => Some(a.clone()),
             None => None,
         };
+        self.get_handler(handlers);
     }
     pub fn processing(&mut self, stream: &mut TcpStream) -> ProcessReturnValue {
         self.handle_connection(stream)
@@ -101,10 +101,10 @@ impl HandleConnection for RequestProcessing {
         let mut routerM = RouterManager::new();
 
         response.Setup();
-        if self.cacheData != None{
+        if self.cacheData != None {
             response.send(self.cacheData.as_ref().unwrap().to_string(), true);
+            (response.finalFunction)(&mut self.httpData, &mut response, &mut routerM);
             return Self::get_return_value(routerM, response, self.httpData.path.clone());
-
         }
 
         if self.ProcessingHandler.len() <= 0 {
@@ -139,6 +139,9 @@ impl HandleConnection for RequestProcessing {
     }
 
     fn get_handler(&mut self, handlers: &HandlerType) {
+        if self.cacheData != None {
+            return;
+        }
         let path_use = String::from(format!(
             "{}",
             format_args!(
