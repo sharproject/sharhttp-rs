@@ -7,7 +7,7 @@ use std::{
 
 use crate::{
     util::append_vec::append_vec,
-    App::{get_key, HandlerType},
+    App::{get_key, HandlerType, RequestCaching},
     Request::get_http_data::{GetRequest, HeaderData},
     Response::ResponseTool,
     RouteManager::RouterManager,
@@ -15,12 +15,30 @@ use crate::{
 
 use crate::App::HandleCallback;
 
+pub struct ProcessReturnValue(RouterManager, Option<String>, String);
+
+impl ProcessReturnValue {
+    pub fn ProcessingRouter(&mut self, handler: &mut HandlerType) {
+        self.0.ProcessingRouter(handler)
+    }
+    pub fn setData(&mut self, handler: &mut HandlerType, cachingData: &mut RequestCaching) {
+        self.ProcessingRouter(handler);
+        self.ProcessingCache(cachingData);
+    }
+    pub fn ProcessingCache(&mut self, cachingData: &mut RequestCaching) {
+        if self.1 != None {
+            cachingData.insert(self.2.clone(), self.1.clone().unwrap());
+        }
+    }
+}
+
 pub struct RequestProcessing {
     ProcessingHandler: Vec<HandleCallback>,
     not_found_handler: HandleCallback,
     httpData: HeaderData,
     startTime: std::time::Instant,
     finalFunction: HandleCallback,
+    cacheData: Option<String>,
 }
 
 impl RequestProcessing {
@@ -35,24 +53,39 @@ impl RequestProcessing {
             httpData: HeaderData::Default(),
             startTime: StartTime,
             finalFunction,
+            cacheData: None,
         }
     }
-    pub fn preProcessing(&mut self, handlers: &HandlerType, stream: &mut TcpStream) {
+    pub fn preProcessing(
+        &mut self,
+        handlers: &HandlerType,
+        stream: &mut TcpStream,
+        cache: &RequestCaching,
+    ) {
         self.get_request_data(stream);
         self.get_handler(handlers);
+        self.cacheData = match cache.get(&self.httpData.path.clone()){
+            Some(a) => Some(a.clone()),
+            None => None,
+        };
     }
-    pub fn processing(&mut self, stream: &mut TcpStream) -> RouterManager {
+    pub fn processing(&mut self, stream: &mut TcpStream) -> ProcessReturnValue {
         self.handle_connection(stream)
     }
 }
 
 pub trait HandleConnection {
-    fn handle_connection(&mut self, stream: &mut TcpStream) -> RouterManager;
+    fn handle_connection(&mut self, stream: &mut TcpStream) -> ProcessReturnValue;
     fn get_request_data(&mut self, stream: &TcpStream);
     fn get_handler(&mut self, handlers: &HandlerType);
+    fn get_return_value(
+        r: RouterManager,
+        Response: ResponseTool,
+        path: String,
+    ) -> ProcessReturnValue;
 }
 impl HandleConnection for RequestProcessing {
-    fn handle_connection(&mut self, stream: &mut TcpStream) -> RouterManager {
+    fn handle_connection(&mut self, stream: &mut TcpStream) -> ProcessReturnValue {
         let mut response = ResponseTool {
             stream,
             response: false,
@@ -63,6 +96,7 @@ impl HandleConnection for RequestProcessing {
             cookie: &mut Vec::new(),
             StartTime: self.startTime,
             finalFunction: self.finalFunction,
+            caching: false,
         };
         let mut routerM = RouterManager::new();
 
@@ -71,23 +105,23 @@ impl HandleConnection for RequestProcessing {
         if self.ProcessingHandler.len() <= 0 {
             (self.not_found_handler)(&mut self.httpData, &mut response, &mut routerM);
             (response.finalFunction)(&mut self.httpData, &mut response, &mut routerM);
-            return routerM;
+            return Self::get_return_value(routerM, response, self.httpData.path.clone());
         };
 
         for h in &self.ProcessingHandler {
             if response.response {
                 (response.finalFunction)(&mut self.httpData, &mut response, &mut routerM);
-                return routerM;
+                return Self::get_return_value(routerM, response, self.httpData.path.clone());
             }
             (&h)(&mut self.httpData, &mut response, &mut routerM);
         }
         if response.response {
             (response.finalFunction)(&mut self.httpData, &mut response, &mut routerM);
-            return routerM;
+            return Self::get_return_value(routerM, response, self.httpData.path.clone());
         }
         (self.not_found_handler)(&mut self.httpData, &mut response, &mut routerM);
         (response.finalFunction)(&mut self.httpData, &mut response, &mut routerM);
-        return routerM;
+        return Self::get_return_value(routerM, response, self.httpData.path.clone());
     }
 
     fn get_request_data(&mut self, stream: &TcpStream) {
@@ -126,6 +160,18 @@ impl HandleConnection for RequestProcessing {
                     append_vec(&mut self.ProcessingHandler, rest_handlers);
                 }
             }
+        }
+    }
+
+    fn get_return_value(
+        r: RouterManager,
+        Response: ResponseTool,
+        path: String,
+    ) -> ProcessReturnValue {
+        if Response.caching {
+            ProcessReturnValue(r, Some(Response.content), path)
+        } else {
+            ProcessReturnValue(r, None, path)
         }
     }
 }

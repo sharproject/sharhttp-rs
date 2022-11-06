@@ -19,6 +19,8 @@ pub struct ResponseTool<'a> {
     pub cookie: &'a mut crate::Request::get_http_data::CookieType,
     pub StartTime: std::time::Instant,
     pub finalFunction: HandleCallback,
+    #[doc="set this attr to enable and disable caching"]
+    pub caching: bool,
 }
 
 impl ResponseTool<'_> {

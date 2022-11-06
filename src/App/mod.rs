@@ -2,13 +2,17 @@
 use std::{collections::BTreeMap, net::TcpListener};
 
 use crate::{
-    util::append_vec::append_vec, HandleConnection::RequestProcessing,
-    Request::get_http_data::HeaderData, Response::ResponseTool, RouteManager::RouterManager,
+    util::append_vec::append_vec,
+    HandleConnection::{ProcessReturnValue, RequestProcessing},
+    Request::get_http_data::HeaderData,
+    Response::ResponseTool,
+    RouteManager::RouterManager,
 };
 
 pub type HandleCallback = fn(&mut HeaderData, &mut ResponseTool, &mut RouterManager) -> (); // request: HeaderData, response: TcpStream
 
 pub type HandlerType = BTreeMap<HandlerBTreeMapKeyString, Vec<HandleCallback>>;
+pub type RequestCaching = BTreeMap<String, String>;
 #[doc = include_str!("../../doc/HttpHandler.md")]
 #[derive(Clone)]
 pub struct HttpHandler {
@@ -16,6 +20,7 @@ pub struct HttpHandler {
     not_found_handler: HandleCallback,
     threading: bool,
     finalHandler: HandleCallback,
+    request_caching: RequestCaching,
 }
 
 pub fn default_not_found_handler(
@@ -35,6 +40,7 @@ impl HttpHandler {
             not_found_handler: default_not_found_handler,
             threading: false,
             finalHandler: |_, _, _| {},
+            request_caching: RequestCaching::new(),
         };
     }
 
@@ -45,47 +51,49 @@ impl HttpHandler {
     }
 
     #[doc = "to register the post handler ex : handle.post('/'.to_string() , <your handler>)"]
-    pub fn post(&mut self, path: String, handler: HandleCallback) {
+    pub fn post(&mut self, path: String, handler: HandleCallback) -> &mut Self {
         self.register_handler("POST".to_string(), path, handler)
     }
 
     #[doc = "to register the get handler ex : handle.get('/'.to_string() , <your handler>)"]
-    pub fn get(&mut self, path: String, handler: HandleCallback) {
+    pub fn get(&mut self, path: String, handler: HandleCallback) -> &mut Self {
         self.register_handler("GET".to_string(), path, handler)
     }
 
     #[doc = "to register the put handler ex : handle.put('/'.to_string() , <your handler>)"]
-    pub fn put(&mut self, path: String, handler: HandleCallback) {
+    pub fn put(&mut self, path: String, handler: HandleCallback) -> &mut Self {
         self.register_handler("PUT".to_owned(), path, handler)
     }
 
     #[doc = "to register the patch handler ex : handle.patch('/'.to_string() , <your handler>)"]
-    pub fn patch(&mut self, path: String, handler: HandleCallback) {
+    pub fn patch(&mut self, path: String, handler: HandleCallback) -> &mut Self {
         self.register_handler("PATCH".to_string(), path, handler)
     }
 
     #[doc = "to register the delete handler ex : handle.delete('/'.to_string() , <your handler>)"]
-    pub fn delete(&mut self, path: String, handler: HandleCallback) {
+    pub fn delete(&mut self, path: String, handler: HandleCallback) -> &mut Self {
         self.register_handler("DELETE".to_string(), path, handler)
     }
 
     #[doc = "to register the handler for all method like:GET,POST ex : handle.all_method('/'.to_string() , <your handler>)"]
-    pub fn all_method(&mut self, path: String, handler: HandleCallback) {
+    pub fn all_method(&mut self, path: String, handler: HandleCallback) -> &mut Self {
         self.register_handler(String::from("*"), path, handler)
     }
 
     #[doc = "to register the handler for not found case ex : handle.not_found(<your handler>)"]
-    pub fn not_found(&mut self, handler: HandleCallback) {
+    pub fn not_found(&mut self, handler: HandleCallback) -> &mut Self {
         self.not_found_handler = handler;
+        self
     }
 
     #[doc = "to register the handler for run when response case ex : handle.finalFn(<your handler>)"]
-    pub fn finalFn(&mut self, handler: HandleCallback) {
+    pub fn finalFn(&mut self, handler: HandleCallback) -> &mut Self {
         self.finalHandler = handler;
+        self
     }
 
     #[doc = "to register the handler for all http request ex : handle.all(<your handler>)"]
-    pub fn all(&mut self, handler: HandleCallback) {
+    pub fn all(&mut self, handler: HandleCallback) -> &mut Self {
         self.register_handler(String::from("*"), String::from("*"), handler)
     }
 
@@ -96,10 +104,10 @@ impl HttpHandler {
                 let mut stream = stream.unwrap();
                 let mut process =
                     RequestProcessing::new(self.not_found_handler, now, self.finalHandler);
-                process.preProcessing(&self.handler, &mut stream);
+                process.preProcessing(&self.handler, &mut stream,&self.request_caching);
 
                 if self.threading {
-                    let (sender, receiver) = std::sync::mpsc::channel::<RouterManager>();
+                    let (sender, receiver) = std::sync::mpsc::channel::<ProcessReturnValue>();
 
                     std::thread::spawn(move || sender.send(process.processing(&mut stream)));
                     // threadHan
@@ -109,11 +117,14 @@ impl HttpHandler {
                     //         Ok(())
                     //     })
                     //     .expect("đen thôi đỏ là red");
-                    receiver.recv().unwrap().ProcessingRouter(&mut self.handler);
+                    receiver
+                        .recv()
+                        .unwrap()
+                        .setData(&mut self.handler, &mut self.request_caching);
                 } else {
                     process
                         .processing(&mut stream)
-                        .ProcessingRouter(&mut self.handler);
+                        .setData(&mut self.handler, &mut self.request_caching);
                 }
             }
         }
@@ -124,7 +135,7 @@ impl HttpHandler {
         &self.handler
     }
 
-    pub fn route(&mut self, path: String, route: &Self) {
+    pub fn route(&mut self, path: String, route: &Self) -> &mut Self {
         self.add_route(path, route)
     }
 }
@@ -132,7 +143,12 @@ impl HttpHandler {
 trait Handle {
     fn add_handle(&mut self, key: HandlerBTreeMapKeyString, handler: HandleCallback);
     fn add_multiple_handler(&mut self, key: HandlerBTreeMapKeyString, handler: Vec<HandleCallback>);
-    fn register_handler(&mut self, method: String, key: String, handler: HandleCallback);
+    fn register_handler(
+        &mut self,
+        method: String,
+        key: String,
+        handler: HandleCallback,
+    ) -> &mut Self;
 }
 impl Handle for HttpHandler {
     fn add_handle(&mut self, key: HandlerBTreeMapKeyString, handler: HandleCallback) {
@@ -146,9 +162,15 @@ impl Handle for HttpHandler {
     ) {
         pub_add_multiple_handler(&mut self.handler, key.clone(), handler);
     }
-    fn register_handler(&mut self, method: String, path: String, handler: HandleCallback) {
+    fn register_handler(
+        &mut self,
+        method: String,
+        path: String,
+        handler: HandleCallback,
+    ) -> &mut Self {
         let key = get_key(method, path);
         self.add_handle(key, handler);
+        self
     }
 }
 
@@ -181,11 +203,12 @@ pub struct HandlerBTreeMapKeyString {
 }
 
 trait Router {
-    fn add_route(&mut self, path: String, route: &Self);
+    fn add_route(&mut self, path: String, route: &Self) -> &mut Self;
 }
 impl Router for HttpHandler {
-    fn add_route(&mut self, path: String, route: &Self) {
+    fn add_route(&mut self, path: String, route: &Self) -> &mut Self {
         add_route_pub(&mut self.handler, path, route.handlers());
+        self
     }
 }
 
