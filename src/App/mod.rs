@@ -116,9 +116,6 @@ impl HttpHandler {
                         .ProcessingRouter(&mut self.handler);
                 }
             }
-
-            let elapsed = now.elapsed();
-            println!("Elapsed: {:.2?}", elapsed);
         }
     }
 
