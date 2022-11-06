@@ -101,6 +101,11 @@ impl HandleConnection for RequestProcessing {
         let mut routerM = RouterManager::new();
 
         response.Setup();
+        if self.cacheData != None{
+            response.send(self.cacheData.as_ref().unwrap().to_string(), true);
+            return Self::get_return_value(routerM, response, self.httpData.path.clone());
+
+        }
 
         if self.ProcessingHandler.len() <= 0 {
             (self.not_found_handler)(&mut self.httpData, &mut response, &mut routerM);
