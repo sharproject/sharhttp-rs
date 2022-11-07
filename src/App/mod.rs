@@ -21,6 +21,7 @@ pub struct HttpHandler {
     threading: bool,
     finalHandler: HandleCallback,
     request_caching: RequestCaching,
+    cache_not_found_case: bool,
 }
 
 pub fn default_not_found_handler(
@@ -41,6 +42,7 @@ impl HttpHandler {
             threading: false,
             finalHandler: |_, _, _| {},
             request_caching: RequestCaching::new(),
+            cache_not_found_case: false,
         };
     }
 
@@ -103,8 +105,8 @@ impl HttpHandler {
             {
                 let mut stream = stream.unwrap();
                 let mut process =
-                    RequestProcessing::new(self.not_found_handler, now, self.finalHandler);
-                process.preProcessing(&self.handler, &mut stream,&self.request_caching);
+                    RequestProcessing::new(self.not_found_handler, now, self.finalHandler,self.cache_not_found_case);
+                process.preProcessing(&self.handler, &mut stream, &self.request_caching);
 
                 if self.threading {
                     let (sender, receiver) = std::sync::mpsc::channel::<ProcessReturnValue>();

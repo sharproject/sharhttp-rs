@@ -11,7 +11,7 @@ use crate::{
 
 pub struct ResponseTool<'a> {
     pub(crate) stream: &'a mut TcpStream,
-    pub response: bool,
+    pub responded: bool,
     pub(crate) status: u128,
     pub content: String,
     pub header: &'a mut crate::Request::get_http_data::HeaderType,
@@ -19,8 +19,10 @@ pub struct ResponseTool<'a> {
     pub cookie: &'a mut crate::Request::get_http_data::CookieType,
     pub StartTime: std::time::Instant,
     pub finalFunction: HandleCallback,
-    #[doc="set this attr to enable and disable caching"]
+    #[doc = "set this attr to enable and disable caching"]
     pub caching: bool,
+    #[doc="if value is true app don't run next handler"]
+    pub ended: bool,
 }
 
 impl ResponseTool<'_> {
@@ -29,7 +31,7 @@ impl ResponseTool<'_> {
         return self;
     }
     pub fn end(&mut self) {
-        if self.response {
+        if self.responded {
             panic!("was response");
         }
         self.preProcessing();
@@ -53,7 +55,7 @@ impl ResponseTool<'_> {
 
         match self.stream.write_all(response_data.as_bytes()) {
             Ok(_) => {
-                self.response = true;
+                self.responded = true;
             }
             Err(error) => {
                 panic!("have the error when response {:?}", error);

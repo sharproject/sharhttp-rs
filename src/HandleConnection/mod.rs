@@ -39,6 +39,7 @@ pub struct RequestProcessing {
     startTime: std::time::Instant,
     finalFunction: HandleCallback,
     cacheData: Option<String>,
+    cache_not_found_case: bool,
 }
 
 impl RequestProcessing {
@@ -46,6 +47,7 @@ impl RequestProcessing {
         not_found_handler: HandleCallback,
         StartTime: std::time::Instant,
         finalFunction: HandleCallback,
+        cache_not_found_case: bool,
     ) -> RequestProcessing {
         RequestProcessing {
             ProcessingHandler: Vec::new(),
@@ -54,6 +56,7 @@ impl RequestProcessing {
             startTime: StartTime,
             finalFunction,
             cacheData: None,
+            cache_not_found_case,
         }
     }
     pub fn preProcessing(
@@ -88,7 +91,7 @@ impl HandleConnection for RequestProcessing {
     fn handle_connection(&mut self, stream: &mut TcpStream) -> ProcessReturnValue {
         let mut response = ResponseTool {
             stream,
-            response: false,
+            responded: false,
             status: 200,
             content: "".to_string(),
             header: &mut BTreeMap::new(),
@@ -97,6 +100,7 @@ impl HandleConnection for RequestProcessing {
             StartTime: self.startTime,
             finalFunction: self.finalFunction,
             caching: false,
+            ended: false,
         };
         let mut routerM = RouterManager::new();
 
@@ -108,25 +112,28 @@ impl HandleConnection for RequestProcessing {
         }
 
         if self.ProcessingHandler.len() <= 0 {
+            response.caching = self.cache_not_found_case;
             (self.not_found_handler)(&mut self.httpData, &mut response, &mut routerM);
             (response.finalFunction)(&mut self.httpData, &mut response, &mut routerM);
             return Self::get_return_value(routerM, response, self.httpData.path.clone());
         };
 
         for h in &self.ProcessingHandler {
-            if response.response {
+            if response.ended {
                 (response.finalFunction)(&mut self.httpData, &mut response, &mut routerM);
                 return Self::get_return_value(routerM, response, self.httpData.path.clone());
             }
             (&h)(&mut self.httpData, &mut response, &mut routerM);
         }
-        if response.response {
+        if response.responded {
+            (response.finalFunction)(&mut self.httpData, &mut response, &mut routerM);
+            return Self::get_return_value(routerM, response, self.httpData.path.clone());
+        } else {
+            response.caching = self.cache_not_found_case;
+            (self.not_found_handler)(&mut self.httpData, &mut response, &mut routerM);
             (response.finalFunction)(&mut self.httpData, &mut response, &mut routerM);
             return Self::get_return_value(routerM, response, self.httpData.path.clone());
         }
-        (self.not_found_handler)(&mut self.httpData, &mut response, &mut routerM);
-        (response.finalFunction)(&mut self.httpData, &mut response, &mut routerM);
-        return Self::get_return_value(routerM, response, self.httpData.path.clone());
     }
 
     fn get_request_data(&mut self, stream: &TcpStream) {
