@@ -9,6 +9,3 @@ pub mod util;
 pub mod HandleConnection;
 pub mod RouteManager;
 pub mod status;
-
-#[cfg(feature = "macro")]
-pub use lib_macro::handler;

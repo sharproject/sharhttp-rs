@@ -1,5 +1,5 @@
 use regex::Regex;
-use std::fmt::Debug;
+use std::{fmt::Debug};
 
 pub type HeaderType = std::collections::BTreeMap<String, String>;
 pub type CookieType = Vec<CookieValue>;
@@ -8,11 +8,26 @@ pub type CookieType = Vec<CookieValue>;
 pub struct CookieValue {
     pub name: String,
     pub value: String,
-    pub Max_Age: i32,
+    pub Max_Age: Option<i32>,
 }
 impl CookieValue {
     pub fn header(&self) -> String {
-        format!("{}={};Max-Age={}", self.name, self.value, self.Max_Age).to_string()
+        Self::create_header(self.name.clone(), self.value.clone(), self.Max_Age)
+    }
+    pub fn delete_cookie_header(&self) -> String {
+        Self::create_header(self.name.clone(), "deleted".to_string(), None)
+    }
+    pub fn create_header(name: String, value: String, Max_Age: Option<i32>) -> String {
+        format!(
+            "{}={};{}",
+            name,
+            value,
+            match Max_Age {
+                Some(a) => format!("Max-Age={}", a),
+                None => "".to_string(),
+            }
+        )
+        .to_string()
     }
 }
 
@@ -22,6 +37,7 @@ pub struct HeaderData {
     pub path: String,
     pub http_version: String,
     pub header: HeaderType,
+    pub cookie: HeaderType,
 
     pub LocalData: serde_json::Map<String, serde_json::Value>,
 
@@ -36,6 +52,7 @@ impl HeaderData {
             header: std::collections::BTreeMap::new(),
             LocalData: serde_json::Map::new(),
             LocalLibParseData: serde_json::Map::new(),
+            cookie: HeaderType::default(),
         }
     }
 }
@@ -67,7 +84,10 @@ pub fn GetRequest(http_request: &Vec<String>) -> HeaderData {
         if http_request_header_regex.is_match(&e) {
             for cap in http_request_header_regex.captures_iter(&e) {
                 match cap[1].to_string().as_str() {
-                    "Cookie" => {}
+                    "Cookie" => {
+                        let path = cap[2].split("=").collect::<Vec<&str>>();
+                        data.cookie.insert(path[0].to_string(), path[1].to_string());
+                    }
                     _ => {
                         data.header.insert(cap[1].to_string(), cap[2].to_string());
                     }

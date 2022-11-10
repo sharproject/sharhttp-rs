@@ -21,8 +21,10 @@ pub struct ResponseTool<'a> {
     pub finalFunction: HandleCallback,
     #[doc = "set this attr to enable and disable caching"]
     pub caching: bool,
-    #[doc="if value is true app don't run next handler"]
+    #[doc = "if value is true app don't run next handler"]
     pub ended: bool,
+    pub requestCookie: CookieType,
+    pub removeCookieHeader: CookieType,
 }
 
 impl ResponseTool<'_> {
@@ -50,6 +52,9 @@ impl ResponseTool<'_> {
         for k in self.cookie.clone() {
             response_data.push_str(&format!("Set-Cookie: {}\n", k.header()));
         }
+        for k in self.removeCookieHeader.clone() {
+            response_data.push_str(&format!("Set-Cookie: {}\n", k.delete_cookie_header()));
+        }
         response_data.push_str("\r\n");
         response_data.push_str(&self.content);
 
@@ -74,6 +79,13 @@ impl ResponseTool<'_> {
             self.header
                 .insert(n.to_string(), default_header.get(n).unwrap().to_string());
         }
+        for n in &self.Request.cookie {
+            self.requestCookie.push(CookieValue {
+                name: n.0.to_string(),
+                value: n.1.to_string(),
+                Max_Age: None,
+            })
+        }
         self
     }
     pub fn set_header(&mut self, k: String, v: String) {
@@ -92,6 +104,11 @@ impl ResponseTool<'_> {
         for k in self.cookie.clone() {
             if k.name != n {
                 newVec.push(k);
+            }
+        }
+        for k in &self.requestCookie{
+            if k.name == n {
+                self.removeCookieHeader.push(k.clone())
             }
         }
         self.cookie.clone_from(&newVec);

@@ -1,5 +1,5 @@
 use rust_http_web_lib::App::HttpHandler;
-use rust_http_web_lib::Request::get_http_data::HeaderData;
+use rust_http_web_lib::Request::get_http_data::{HeaderData, CookieValue};
 use rust_http_web_lib::Response::ResponseTool;
 use rust_http_web_lib::RouteManager::RouterManager;
 
@@ -32,8 +32,11 @@ fn main() {
         }
     }
 }
-fn home_handler(_: &mut HeaderData, response: &mut ResponseTool, _: &mut RouterManager) {
-    response.caching = true;
+fn home_handler(request: &mut HeaderData, response: &mut ResponseTool, _: &mut RouterManager) {
+    match request.cookie.get("key"){
+        Some(_) => response.remove_cookie("key".to_string()),
+        None => response.set_cookie(&CookieValue{ name: "key".to_string(), value: "value".to_string(), Max_Age: None }),
+    }
     response.send(format!(r"<h1>hello world</h1> <br\>").to_string(), true);
 }
 fn log_request(request: &mut HeaderData, _response: &mut ResponseTool, _: &mut RouterManager) {
