@@ -8,7 +8,7 @@ use std::{
 use crate::{
     util::append_vec::append_vec,
     App::{get_key, HandlerType, RequestCaching},
-    Request::get_http_data::{GetRequest, HeaderData, CookieType},
+    Request::get_http_data::{CookieType, GetRequest, HeaderData},
     Response::ResponseTool,
     RouteManager::RouterManager,
 };
@@ -101,8 +101,8 @@ impl HandleConnection for RequestProcessing {
             finalFunction: self.finalFunction,
             caching: false,
             ended: false,
-            requestCookie:CookieType::default(),
-            removeCookieHeader:CookieType::default()
+            requestCookie: CookieType::default(),
+            removeCookieHeader: CookieType::default(),
         };
         let mut routerM = RouterManager::new();
 
