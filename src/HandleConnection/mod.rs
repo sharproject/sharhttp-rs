@@ -51,7 +51,7 @@ impl RequestProcessing {
         RequestProcessing {
             ProcessingHandler: Vec::new(),
             not_found_handler,
-            httpData: HeaderData::Default(),
+            httpData: HeaderData::default(),
             startTime: StartTime,
             finalFunction,
             cacheData: None,
