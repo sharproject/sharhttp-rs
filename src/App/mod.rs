@@ -104,14 +104,18 @@ impl HttpHandler {
             let now = std::time::Instant::now();
             {
                 let mut stream = stream.unwrap();
-                let mut process =
-                    RequestProcessing::new(self.not_found_handler, now, self.finalHandler,self.cache_not_found_case);
+                let mut process = RequestProcessing::new(
+                    self.not_found_handler,
+                    now,
+                    self.finalHandler,
+                    self.cache_not_found_case,
+                );
                 process.preProcessing(&self.handler, &mut stream, &self.request_caching);
 
                 if self.threading {
                     let (sender, receiver) = std::sync::mpsc::channel::<ProcessReturnValue>();
 
-                    std::thread::spawn(move || sender.send(process.processing(&mut stream)));
+                    std::thread::spawn(move || sender.send(process.processing(stream)));
                     // threadHan
                     //     .join()
                     //     .and_then(|f| {
@@ -125,7 +129,7 @@ impl HttpHandler {
                         .setData(&mut self.handler, &mut self.request_caching);
                 } else {
                     process
-                        .processing(&mut stream)
+                        .processing(stream)
                         .setData(&mut self.handler, &mut self.request_caching);
                 }
             }

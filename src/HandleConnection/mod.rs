@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 use std::{
-    collections::BTreeMap,
     io::{BufRead, BufReader},
     net::TcpStream,
 };
@@ -8,8 +7,8 @@ use std::{
 use crate::{
     util::append_vec::append_vec,
     App::{get_key, HandlerType, RequestCaching},
-    Request::get_http_data::{CookieType, GetRequest, HeaderData},
-    Response::ResponseTool,
+    Request::get_http_data::{GetRequest, HeaderData},
+    Response::{getResponseTool, ResponseTool},
     RouteManager::RouterManager,
 };
 
@@ -72,13 +71,13 @@ impl RequestProcessing {
         };
         self.get_handler(handlers);
     }
-    pub fn processing(&mut self, stream: &mut TcpStream) -> ProcessReturnValue {
+    pub fn processing(&mut self, stream: TcpStream) -> ProcessReturnValue {
         self.handle_connection(stream)
     }
 }
 
 pub trait HandleConnection {
-    fn handle_connection(&mut self, stream: &mut TcpStream) -> ProcessReturnValue;
+    fn handle_connection(&mut self, stream: TcpStream) -> ProcessReturnValue;
     fn get_request_data(&mut self, stream: &TcpStream);
     fn get_handler(&mut self, handlers: &HandlerType);
     fn get_return_value(
@@ -88,22 +87,9 @@ pub trait HandleConnection {
     ) -> ProcessReturnValue;
 }
 impl HandleConnection for RequestProcessing {
-    fn handle_connection(&mut self, stream: &mut TcpStream) -> ProcessReturnValue {
-        let mut response = ResponseTool {
-            stream,
-            responded: false,
-            status: 200,
-            content: "".to_string(),
-            header: &mut BTreeMap::new(),
-            Request: &self.httpData.clone(),
-            cookie: &mut Vec::new(),
-            StartTime: self.startTime,
-            finalFunction: self.finalFunction,
-            caching: false,
-            ended: false,
-            requestCookie: CookieType::default(),
-            removeCookieHeader: CookieType::default(),
-        };
+    fn handle_connection(&mut self, stream: TcpStream) -> ProcessReturnValue {
+        let binding = self.httpData.clone();
+        let mut response = getResponseTool(stream, &binding, self.startTime, self.finalFunction);
         let mut routerM = RouterManager::new();
 
         response.Setup();
